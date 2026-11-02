@@ -24,6 +24,7 @@ button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ac);margin-right:6px}
 .sn{color:var(--mut);font-size:14px}
 .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.chip{font-size:13px;padding:5px 10px;border-radius:999px}.sec{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ac);margin:18px 0 8px;display:flex;justify-content:space-between}.sec span{color:var(--mut);font-weight:500}
 .msg{padding:24px;text-align:center;color:var(--mut)}
 small a,.lnk{color:var(--ac);cursor:pointer;text-decoration:underline;background:none;border:0;padding:0;font-size:inherit}
 </style>
@@ -38,6 +39,7 @@ small a,.lnk{color:var(--ac);cursor:pointer;text-decoration:underline;background
 <button id="tab-old">Archive</button>
 <button id="refresh">Refresh</button>
 </div>
+<div class="chips" id="chips"></div>
 <div id="list"></div>
 <p class="sub"><button class="lnk" id="sync">Set up Done sync to Gmail</button></p>
 </div>
@@ -46,7 +48,7 @@ small a,.lnk{color:var(--ac);cursor:pointer;text-decoration:underline;background
 var REPO='AlexJukes/reading-x7k2q9';
 var DAYS30=30*24*3600*1000;
 var $=function(id){return document.getElementById(id)};
-var items=[],updated=null,tab='new';
+var ORDER=["Professional","Society & Politics","Culture & Arts","Mind & Wellbeing","Other","Notifications"];var items=[],updated=null,tab='new',cat='all';
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){return null}}
 function b64d(s){s=s.replace(/-/g,'+').replace(/_/g,'/');var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a}
 function getDone(){try{return JSON.parse(ls('done')||'{}')}catch(e){return {}}}
@@ -73,9 +75,22 @@ async function load(){
 }
 function ago(ts){var s=(Date.now()-ts)/1000;if(s<90)return 'just now';if(s<5400)return Math.round(s/60)+' min ago';if(s<172800)return Math.round(s/3600)+' h ago';return Math.round(s/86400)+' days ago'}
 function fmt(ts){return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+function card(x){
+ var c=document.createElement('div');c.className='card';
+ var a=document.createElement('a');a.className='t';a.target='_blank';a.rel='noopener noreferrer';
+ a.href=x.l||('https://mail.google.com/mail/u/0/#all/'+x.t);a.textContent=x.s;
+ var m=document.createElement('div');m.className='meta';
+ if(x.u){var dt=document.createElement('span');dt.className='dot';m.appendChild(dt)}
+ m.appendChild(document.createTextNode(x.f+' · '+fmt(x.d)+(x.l?'':' · opens Gmail')));
+ var s=document.createElement('div');s.className='sn';s.textContent=x.n;
+ var row=document.createElement('div');row.className='row';
+ var b=document.createElement('button');b.textContent='Done';b.onclick=function(){markDone(x.i)};
+ row.appendChild(b);
+ c.appendChild(a);c.appendChild(m);c.appendChild(s);c.appendChild(row);return c;
+}
 function render(){
  var q=$('q').value.trim().toLowerCase(),done=getDone(),now=Date.now();
- var vis=items.filter(function(x){
+ var base=items.filter(function(x){
   if(done[x.i])return false;
   var recent=now-x.d<DAYS30;
   if(tab==='new'&&!recent)return false;
@@ -86,22 +101,24 @@ function render(){
  var nOld=items.filter(function(x){return !done[x.i]&&now-x.d>=DAYS30}).length;
  $('tab-new').textContent='Last 30 days ('+nNew+')';$('tab-old').textContent='Archive ('+nOld+')';
  $('sub').textContent='Updated '+ago(Date.parse(updated))+(ls('ghtoken')?' · Done syncs to Gmail':' · Done hides here only');
+ var counts={};base.forEach(function(x){counts[x.c]=(counts[x.c]||0)+1});
+ var chips=$('chips');chips.innerHTML='';
+ function chip(key,label,n){var b=document.createElement('button');b.className='chip'+(cat===key?' on':'');b.textContent=label+' ('+n+')';b.onclick=function(){cat=key;render()};chips.appendChild(b)}
+ chip('all','All',base.length);
+ ORDER.forEach(function(c){if(counts[c])chip(c,c,counts[c])});
  var list=$('list');list.innerHTML='';
+ var vis=cat==='all'?base:base.filter(function(x){return x.c===cat});
  if(!vis.length){var e=document.createElement('div');e.className='msg';e.textContent=q?'No matches.':'Nothing here. Nice.';list.appendChild(e);return}
- vis.slice(0,300).forEach(function(x){
-  var c=document.createElement('div');c.className='card';
-  var a=document.createElement('a');a.className='t';a.target='_blank';a.rel='noopener noreferrer';
-  a.href=x.l||('https://mail.google.com/mail/u/0/#all/'+x.t);a.textContent=x.s;
-  var m=document.createElement('div');m.className='meta';
-  if(x.u){var dt=document.createElement('span');dt.className='dot';m.appendChild(dt)}
-  m.appendChild(document.createTextNode(x.f+' · '+fmt(x.d)+(x.l?'':' · opens Gmail')));
-  var s=document.createElement('div');s.className='sn';s.textContent=x.n;
-  var row=document.createElement('div');row.className='row';
-  var b=document.createElement('button');b.textContent='Done';b.onclick=function(){markDone(x.i)};
-  row.appendChild(b);
-  c.appendChild(a);c.appendChild(m);c.appendChild(s);c.appendChild(row);list.appendChild(c);
+ var shown=0,LIMIT=300;
+ var groups=cat==='all'?ORDER:[cat];
+ groups.forEach(function(g){
+  var gi=vis.filter(function(x){return x.c===g});
+  if(!gi.length||shown>=LIMIT)return;
+  if(cat==='all'){var h=document.createElement('div');h.className='sec';h.innerHTML='<b></b><span></span>';h.firstChild.textContent=g;h.lastChild.textContent=gi.length+' item'+(gi.length===1?'':'s');list.appendChild(h)}
+  gi.slice(0,LIMIT-shown).forEach(function(x){list.appendChild(card(x));shown++});
  });
 }
+
 async function markDone(id){
  var d=getDone();d[id]=1;setDone(d);render();
  var tok=ls('ghtoken');
