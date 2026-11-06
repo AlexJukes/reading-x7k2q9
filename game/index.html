@@ -90,7 +90,7 @@ function mkBoss(){var s=[];for(var i=0;i<6;i++)s.push({a:i*Math.PI/3,state:0,t:0
 function initGame(){initGame0();v2Init();}
 function initGame0(){buildMap();kids=mkKids();clues=mkClues();boss=mkBoss();orbs=[];rings=[];parts=[];gateOpen=false;bossDone=false;players[0].kid=0;players[1].kid=-1;S.msg='';S.msgT=0;S.shake=0;cam.x=0;cam.y=0;camSnap();}
 function stonePos(s){return {x:boss.x+Math.cos(s.a)*2.6,y:boss.y+Math.sin(s.a)*2.6};}
-function say(m,d){S.msg=m;S.msgT=d||3.5;}
+function say(m,d){S.msg=m;S.msgT=d||3.5;speak(m);}
 function dist(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
 function foundCount(){return clues.filter(function(c){return c.found;}).length;}
 
@@ -209,7 +209,7 @@ function bossUpdate(dt){
 }
 
 /* ---------- scenes (point and click) ---------- */
-function startScene(c){S.mode='scene';S.sceneClue=c;S.sceneMsg='';sfx.sw();}
+function startScene(c){S.mode='scene';S.sceneClue=c;S.sceneMsg='';sfx.sw();speak(c.sc.title+'. Click on things to find the clue!');}
 function leaveScene(){
  var c=S.sceneClue;c.cool=2;S.mode='play';S.sceneClue=null;
  if(c.found){
@@ -222,7 +222,7 @@ function sceneClick(mx,my){
  var c=S.sceneClue,items=c.sc.items,hit=null;
  if(mx>440&&mx<660&&my>606&&my<656){leaveScene();return;}
  items.forEach(function(it){if(dist(mx,my,it.x,it.y)<62)hit=it;});
- if(hit){S.sceneMsg=hit.msg;if(hit.clue&&!c.found){c.found=true;sfx.clue();}else if(!hit.clue){tone(300,0.1,'triangle',0.05);hopClue(c);}}
+ if(hit){S.sceneMsg=hit.msg;speak(hit.msg+(hit.clue&&!c.found?' You found a clue!':''));if(hit.clue&&!c.found){c.found=true;sfx.clue();}else if(!hit.clue){tone(300,0.1,'triangle',0.05);hopClue(c);}}
 }
 
 /* ---------- drawing helpers ---------- */
@@ -413,7 +413,7 @@ function drawTitle(){
  txt('3 ghosts, 2 astronauts, 1 dinosaur. Find 8 clues. Beat the Crumble King!',CW/2,420,22,'#ffffff','center');
  txt('P1: WASD to move, X for your costume power, Q to switch kid',CW/2,470,20,'#ffe9a0','center');
  txt('P2 (optional): press 2, then arrows, / for power, . to switch kid',CW/2,500,20,'#9fe3ff','center');
- txt('Ghost: float · Astronaut: rocket · Dino: ROAR · E: dash · M: music',CW/2,540,20,'#ffffff','center');
+ txt('Ghost: float · Astronaut: rocket · Dino: ROAR · E: dash · M: music · V: voice',CW/2,540,20,'#ffffff','center');
  if(Math.floor(S.t*2)%2===0)txt('Press ENTER or click to start',CW/2,610,32,'#ffd23f','center',true);
 }
 function drawScene(){
@@ -440,7 +440,7 @@ function drawWin(){
   {e:'🏮🍬',t:'"I just wanted a QUIET Halloween!" he sighs. He hands back every lantern and all of the candy.'},
   {e:'👻👻👻🧑‍🚀🧑‍🚀🦖',t:'The kids invite him to the party. "Next year, we will be quiet-ish." Mostly. Maybe. (Dino promises nothing.)'},
   {e:'🎃 THE END 🎃',t:'You solved the mystery! Press R to play again.'}];
- var pg=pages[Math.min(S.winPage,pages.length-1)];
+ var pg=pages[Math.min(S.winPage,pages.length-1)];winPg=pg;
  for(var i=0;i<30;i++){var a=S.t*0.6+i*1.7;circ((hash(i,9)*CW+Math.sin(a)*30)%CW,(S.t*60+hash(i,10)*CH)%CH,5);ctx.fillStyle=['#ffd23f','#ff9a1f','#9fe3ff','#ff9ad5'][i%4];ctx.fill();}
  emoji(pg.e,CW/2,250,pg.e.length>8?110:140);
  var words=pg.t.split(' '),line='',lines=[];words.forEach(function(w){if((line+' '+w).length>52){lines.push(line);line=w;}else line=line?line+' '+w:w;});lines.push(line);
@@ -458,9 +458,9 @@ function render0(){
 
 /* ---------- input ---------- */
 var keys={};
-function startGame(){initGame();musicOn();S.mode='play';say('Find the clues! Ghosts float up, astronauts fly rockets, the dino roars.',5);}
+function startGame(){initGame();musicOn();S.mode='play';say('Welcome! Find eight clues to solve the mystery. Ghosts can float. Astronauts have rockets. The dinosaur can roar!',8);}
 function advanceWin(){if(S.winPage<4)S.winPage++;}
-function onPress(k){
+function onPress(k){if(k==='h'){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(k==='v'){voiceOn=!voiceOn;if(!voiceOn&&window.speechSynthesis)window.speechSynthesis.cancel();say(voiceOn?'Voice on!':'Voice off. Press V to turn it on.',2);return;}
  audio();
  if(S.mode==='title'){if(k==='Enter'||k===' ')startGame();return;}
  if(S.mode==='win'){if(k==='Enter'||k===' ')advanceWin();if(k==='r')startGame();return;}
@@ -475,7 +475,7 @@ window.addEventListener('blur',function(){keys={};});
 function mpos(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*CW/r.width,y:(e.clientY-r.top)*CH/r.height};}
 cv.addEventListener('mousemove',function(e){var p=mpos(e);S.mx=p.x;S.my=p.y;});
 cv.addEventListener('click',function(e){audio();var p=mpos(e);S.mx=p.x;S.my=p.y;
- if(S.mode==='title')startGame();else if(S.mode==='scene')sceneClick(p.x,p.y);else if(S.mode==='win')advanceWin();});
+ if(S.mode!=='title'&&hitSpeaker(p.x,p.y)){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(S.mode==='title')startGame();else if(S.mode==='scene')sceneClick(p.x,p.y);else if(S.mode==='win')advanceWin();});
 
 /* ---------- v2: more fun (candy, combo, dash, music, popups, boss phases) ---------- */
 var candies=[],pops=[],score=0,combo=0,comboT=0,candyCount=0,popped={},bats=[],musicFlag=true,musicT=null,mstep=0,startT=0,endT=0,bestCombo=0,lastLeft=6;
@@ -484,7 +484,7 @@ sfx.candy=function(n){tone(520+Math.min(n,14)*45,0.1,'triangle',0.09);};
 function popup(x,y,z,t,col,life){pops.push({x:x,y:y,z:z,txt:t,col:col||'#fff',t:0,life:life||1.2});}
 function v2Init(){
  var i,tries=0,placed=0,x,y,t;
- candies=[];pops=[];score=0;combo=0;comboT=0;candyCount=0;popped={};bestCombo=0;startT=S.t;endT=0;lastLeft=6;
+ winKey=-1;winPg=null;candies=[];pops=[];score=0;combo=0;comboT=0;candyCount=0;popped={};bestCombo=0;startT=S.t;endT=0;lastLeft=6;
  while(placed<70&&tries<3000){tries++;x=Math.floor(Math.random()*W);y=Math.floor(Math.random()*H);t=map[y][x];
   if(t===T.GRASS||t===T.PATH||t===T.MOON||t===T.GRAVE){if(dist(x+0.5,y+0.5,boss.x,boss.y)<3.4)continue;candies.push({x:x+0.5,y:y+0.5,z:0,sky:false,got:false,e:['🍬','🍭','🍫','🍪'][placed%4]});placed++;}}
  placed=0;tries=0;
@@ -509,7 +509,7 @@ function dash(pi){
  k.dashT=0.22;k.dashCd=0.9;k.dx=v.gx;k.dy=v.gy;sfx.dash();popup(k.x,k.y,60,'WHOOSH!','#ffe066',0.6);
 }
 function v2Roar(k){
- popup(k.x,k.y,80,'ROAAAR!','#ffd23f',1.0);
+ popup(k.x,k.y,80,'ROAAAR!','#ffd23f',1.0);speak('Roar!',false,true);
  for(var ty=Math.floor(k.y-3.5);ty<=Math.floor(k.y+3.5);ty++)for(var tx=Math.floor(k.x-3.5);tx<=Math.floor(k.x+3.5);tx++){
   if(tx<0||ty<0||tx>=W||ty>=H||map[ty][tx]!==T.PUMPKIN||popped[tx+','+ty])continue;
   if(dist(tx+0.5,ty+0.5,k.x,k.y)>3.8)continue;
@@ -524,7 +524,7 @@ function v2Roar(k){
 }
 function v2Say(k){
  var L=k.type==='ghost'?['Boo-tiful!','Wooo!','Spooky!']:(k.type==='astro'?['3-2-1!','To the Moon!','Houston!']:['RAWR!','Stomp stomp!','Dino power!']);
- popup(k.x,k.y,80,L[Math.floor(Math.random()*L.length)],'#ffffff',1.1);
+ var ph=L[Math.floor(Math.random()*L.length)];popup(k.x,k.y,80,ph,'#ffffff',1.1);speak(k.n+' the '+(k.type==='astro'?'astronaut':(k.type==='dino'?'dinosaur':'ghost'))+'. '+ph,false,true);
 }
 function v2Taunt(){popup(boss.x,boss.y,210,['Rumble rumble!','You pesky kids!','Feel my stones!'][Math.floor(Math.random()*3)],'#ffd23f',1.6);}
 function hopClue(c){
@@ -533,7 +533,7 @@ function hopClue(c){
  items.forEach(function(it){if(it.clue)ci=it;else oth.push(it);});
  if(!ci||!oth.length)return;
  var o=oth[Math.floor(Math.random()*oth.length)],tx=ci.x,ty=ci.y;
- ci.x=o.x;ci.y=o.y;o.x=tx;o.y=ty;S.sceneMsg+=' ...something just rustled!';
+ ci.x=o.x;ci.y=o.y;o.x=tx;o.y=ty;S.sceneMsg+=' ...something just rustled!';speak(S.sceneMsg);
 }
 function updateV2(dt){
  if(comboT>0){comboT-=dt;if(comboT<=0)combo=0;}
@@ -567,7 +567,7 @@ function updateV2(dt){
  bats.forEach(function(b){b.x+=b.vx*dt;b.ph+=dt*6;if(b.x<-40)b.x=CW+40;if(b.x>CW+40)b.x=-40;});
  if(gateOpen&&!bossDone){
   var left=boss.stones.filter(function(q){return q.state!==2;}).length;
-  if(left<lastLeft){popup(boss.x,boss.y,210,['Hey!','Ow!','My stones!','NOOOO!','Not fair!','Argh!'][Math.max(0,6-left-1)]||'Ow!','#ffd23f',1.6);lastLeft=left;}
+  if(left<lastLeft){popup(boss.x,boss.y,210,['Hey!','Ow!','My stones!','NOOOO!','Not fair!','Argh!'][Math.max(0,6-left-1)]||'Ow!','#ffd23f',1.6);lastLeft=left;speak(['Hey!','Ow!','My stones!','No!','Not fair!','Argh!'][Math.max(0,6-left-1)]||'Ow!',false,true);}
  }
 }
 function update(dt){var was=S.mode;update0(dt);if(was==='play'&&S.mode==='win')endT=S.t;else if(S.mode==='play')updateV2(dt);}
@@ -591,7 +591,7 @@ function drawV2Overlay(){
  txt('Score '+score,CW-30,32,20,'#ffd23f','right');
  if(combo>1){txt('Combo x'+combo+(combo>=5?'  BONUS x'+(1+Math.floor(combo/5)):''),CW-30,56,15,'#ff9ad5','right');rr(CW-250,64,Math.max(2,230*comboT/2.2),4,2);ctx.fillStyle='#ff9ad5';ctx.fill();}
 }
-function render(){render0();if(S.mode==='play')drawV2Overlay();}
+function render(){render0();if(S.mode==='play')drawV2Overlay();if(S.mode!=='title')drawSpeaker();if(S.mode==='win'&&winPg&&winKey!==S.winPage){winKey=S.winPage;speak(winPg.t);}}
 function drawStats(){
  var secs=Math.max(0,Math.floor(endT-startT)),m=Math.floor(secs/60),s=secs%60,stars=score>=700?3:(score>=350?2:1);
  txt('🍬 '+candyCount+' candy   Best combo x'+bestCombo+'   Score '+score,CW/2,520,26,'#ffe9a0','center',true);
@@ -610,6 +610,38 @@ function musicTick(){
  if(mstep%4===0)tone(bass[(mstep/4|0)%4],0.5,'triangle',0.05);
  if(mstep%2===0)tone(lead[(mstep/2|0)%8]*(S.mode==='win'?2:1),0.16,'square',0.02);
 }
+
+/* ---------- v3: voiceover for early readers (browser speech) ---------- */
+var voiceOn=true,lastSpoken='',voiceObj=null,winKey=-1,winPg=null;
+function cleanSpeech(t){return String(t).replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,' ').replace(/(\d+)\s*\/\s*(\d+)/g,'$1 of $2').replace(/\s+x(\d+)/g,' times $1').replace(/WASD/g,'W A S D').replace(/\s+/g,' ').trim();}
+function pickVoice(){
+ var ss=window.speechSynthesis;if(!ss||!ss.getVoices)return null;
+ var vs=ss.getVoices()||[];if(!vs.length)return null;
+ var en=vs.filter(function(v){return /^en/i.test(v.lang);});if(!en.length)return null;
+ var nice=en.filter(function(v){return /Samantha|Serena|Kate|Karen|Moira|Susan|Hazel|Fiona|Tessa|Zira|Female|Google US English/i.test(v.name);});
+ var gb=(nice.length?nice:en).filter(function(v){return /en[-_]GB/i.test(v.lang);});
+ return gb[0]||nice[0]||en[0];
+}
+function speak(t,force,soft){
+ if(!t)return;var c=cleanSpeech(t);if(!c)return;
+ if(!soft)lastSpoken=c;
+ if(!voiceOn&&!force)return;
+ var ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance)return;
+ try{
+  if(soft&&ss.speaking)return;
+  ss.cancel();
+  var u=new window.SpeechSynthesisUtterance(c);
+  if(!voiceObj)voiceObj=pickVoice();
+  if(voiceObj){u.voice=voiceObj;u.lang=voiceObj.lang;}else u.lang='en-GB';
+  u.rate=0.85;u.pitch=1.15;u.volume=1;ss.speak(u);
+ }catch(e){}
+}
+function drawSpeaker(){
+ var x=CW-50,y=112;
+ circ(x,y,26);paint(voiceOn?'#ffd23f':'#8a8aa0',3);emoji(voiceOn?'🔊':'🔇',x,y+2,26);
+ txt('Hear again (H)',x,y+42,12,'#ffffff','center',true);
+}
+function hitSpeaker(mx,my){return dist(mx,my,CW-50,112)<30;}
 
 /* ---------- loop ---------- */
 var last=0;
