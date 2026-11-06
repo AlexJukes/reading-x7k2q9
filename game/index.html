@@ -143,12 +143,12 @@ function switchKid(pi){
  if(cur.state==='rocket'&&tileAt(cur.x,cur.y)===T.VOID){say('Land the rocket first!',2);sfx.bad();return;}
  if(cur.state!=='walk'&&canStand(cur,cur.x,cur.y,'walk')){cur.state='walk';cur.zt=0;}
  var n=players[pi].kid,i;
- for(i=1;i<=6;i++){var c=(n+i)%6;if(ownerOf(c)===-1){players[pi].kid=c;sfx.sw();v2Say(kids[c]);return;}}
+ for(i=1;i<=6;i++){var c=(n+i)%6;if(ownerOf(c)===-1){players[pi].kid=c;players[pi].target=null;sfx.sw();v2Say(kids[c]);return;}}
 }
 function toggleP2(){
  if(S.mode!=='play')return;
  if(players[1].kid>=0){var k=kids[players[1].kid];if(k.state!=='walk'&&canStand(k,k.x,k.y,'walk')){k.state='walk';k.zt=0;}players[1].kid=-1;say('Player 2 left.',1.5);return;}
- for(var i=0;i<6;i++){if(ownerOf(i)===-1){players[1].kid=i;say('Player 2 joined! Arrows to move, / for power, . to switch kid.',4);sfx.sw();return;}}
+ for(var i=0;i<6;i++){if(ownerOf(i)===-1){players[1].kid=i;say('Player 2 joined! Arrows to move, slash for power. Press Tab to swap keys.',5);sfx.sw();return;}}
 }
 
 /* ---------- update ---------- */
@@ -161,9 +161,9 @@ function update0(dt){
  S.t+=dt;if(S.msgT>0)S.msgT-=dt;if(S.shake>0)S.shake-=dt;
  if(S.mode!=='play')return;
  var i;
- var ix0=(keys.d?1:0)-(keys.a?1:0),iy0=(keys.s?1:0)-(keys.w?1:0);
- moveKid(0,ix0,iy0,dt);
- if(players[1].kid>=0){var ix1=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),iy1=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);moveKid(1,ix1,iy1,dt);}
+ var v0=schemeIn(0);
+ moveKid(0,v0.ix,v0.iy,dt);
+ if(players[1].kid>=0){var v1=schemeIn(1);moveKid(1,v1.ix,v1.iy,dt);}
  kids.forEach(function(k){
   if(k.z<k.zt)k.z=Math.min(k.zt,k.z+200*dt);else if(k.z>k.zt)k.z=Math.max(k.zt,k.z-200*dt);
   if(k.cd>0)k.cd-=dt;if(k.dizzy>0)k.dizzy-=dt;
@@ -393,7 +393,7 @@ function drawHUD(){
   drawKidAt(k,x+36,y+66,0.9);
   var tp=k.type==='ghost'?'ghost':(k.type==='astro'?'astronaut':'dinosaur');
   txt(p.name+': '+k.n+' the '+tp,x+72,y+18,17,p.col);
-  var keysTxt=pi===0?'Move WASD · X power · E dash · Q switch':'Move arrows · / power · , dash · . switch';
+  var keysTxt=hudKeys(pi);
   txt(keysTxt,x+72,y+40,14,'#cfc8e6');
   var st;
   if(k.type==='ghost')st=k.state==='hover'?'Floating! X again to land. Touch cracked stones to pop ghosts.':'X: float up to reach sky clues.';
@@ -411,8 +411,8 @@ function drawTitle(){
  txt('a prototype made by Alex and his daughter',CW/2,176,22,'#ffffff','center');
  var ks=mkKids();for(i=0;i<6;i++){ks[i].seed=i;drawKidAt(ks[i],250+i*120,330+Math.sin(S.t*3+i)*6,2.2);}
  txt('3 ghosts, 2 astronauts, 1 dinosaur. Find 8 clues. Beat the Crumble King!',CW/2,420,22,'#ffffff','center');
- txt('P1: WASD to move, X for your costume power, Q to switch kid',CW/2,470,20,'#ffe9a0','center');
- txt('P2 (optional): press 2, then arrows, / for power, . to switch kid',CW/2,500,20,'#9fe3ff','center');
+ txt('P1: WASD or arrows to move, X for your costume power, Q to switch kid. Or just click!',CW/2,470,20,'#ffe9a0','center');
+ txt('P2 (optional): press 2, then arrows, / for power, . to switch kid. Tab swaps keys',CW/2,500,20,'#9fe3ff','center');
  txt('Ghost: float · Astronaut: rocket · Dino: ROAR · E: dash · M: music · V: voice',CW/2,540,20,'#ffffff','center');
  if(Math.floor(S.t*2)%2===0)txt('Press ENTER or click to start',CW/2,610,32,'#ffd23f','center',true);
 }
@@ -460,7 +460,7 @@ function render0(){
 var keys={};
 function startGame(){initGame();musicOn();S.mode='play';say('Welcome! Find eight clues to solve the mystery. Ghosts can float. Astronauts have rockets. The dinosaur can roar!',8);}
 function advanceWin(){if(S.winPage<4)S.winPage++;}
-function onPress(k){if(k==='h'){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(k==='v'){voiceOn=!voiceOn;if(!voiceOn&&window.speechSynthesis)window.speechSynthesis.cancel();say(voiceOn?'Voice on!':'Voice off. Press V to turn it on.',2);return;}
+function onPress(k){if(k==='Tab'){if(S.mode==='play')swapCtrl();return;}if(S.mode==='play'){if(k==='x'){power(schemePlayer(0));return;}if(k==='/'){power(schemePlayer(1));return;}if(k==='e'){dash(schemePlayer(0));return;}if(k===','){dash(schemePlayer(1));return;}if(k==='q'){switchKid(schemePlayer(0));return;}if(k==='.'){switchKid(schemePlayer(1));return;}}if(k==='h'){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(k==='v'){voiceOn=!voiceOn;if(!voiceOn&&window.speechSynthesis)window.speechSynthesis.cancel();say(voiceOn?'Voice on!':'Voice off. Press V to turn it on.',2);return;}
  audio();
  if(S.mode==='title'){if(k==='Enter'||k===' ')startGame();return;}
  if(S.mode==='win'){if(k==='Enter'||k===' ')advanceWin();if(k==='r')startGame();return;}
@@ -468,14 +468,14 @@ function onPress(k){if(k==='h'){speak(lastSpoken||'Press X to use your costume p
  if(k==='e')dash(0);else if(k===',')dash(1);else if(k==='m')toggleMusic();else if(k==='x')power(0);else if(k==='/')power(1);else if(k==='q')switchKid(0);else if(k==='.')switchKid(1);else if(k==='2')toggleP2();
 }
 window.addEventListener('keydown',function(e){var k=e.key,kl=k.length===1?k.toLowerCase():k;
- if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','/'].indexOf(k)>=0)e.preventDefault();
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','/','Tab'].indexOf(k)>=0)e.preventDefault();
  if(!keys[kl]){keys[kl]=true;onPress(kl);}});
 window.addEventListener('keyup',function(e){var k=e.key;keys[k.length===1?k.toLowerCase():k]=false;});
 window.addEventListener('blur',function(){keys={};});
 function mpos(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*CW/r.width,y:(e.clientY-r.top)*CH/r.height};}
 cv.addEventListener('mousemove',function(e){var p=mpos(e);S.mx=p.x;S.my=p.y;});
 cv.addEventListener('click',function(e){audio();var p=mpos(e);S.mx=p.x;S.my=p.y;
- if(S.mode!=='title'&&hitSpeaker(p.x,p.y)){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(S.mode==='title')startGame();else if(S.mode==='scene')sceneClick(p.x,p.y);else if(S.mode==='win')advanceWin();});
+ if(S.mode!=='title'&&hitSpeaker(p.x,p.y)){speak(lastSpoken||'Press X to use your costume power!',true);return;}if(S.mode==='play'&&worldClick(p.x,p.y))return;if(S.mode==='title')startGame();else if(S.mode==='scene')sceneClick(p.x,p.y);else if(S.mode==='win')advanceWin();});
 
 /* ---------- v2: more fun (candy, combo, dash, music, popups, boss phases) ---------- */
 var candies=[],pops=[],score=0,combo=0,comboT=0,candyCount=0,popped={},bats=[],musicFlag=true,musicT=null,mstep=0,startT=0,endT=0,bestCombo=0,lastLeft=6;
@@ -484,7 +484,7 @@ sfx.candy=function(n){tone(520+Math.min(n,14)*45,0.1,'triangle',0.09);};
 function popup(x,y,z,t,col,life){pops.push({x:x,y:y,z:z,txt:t,col:col||'#fff',t:0,life:life||1.2});}
 function v2Init(){
  var i,tries=0,placed=0,x,y,t;
- winKey=-1;winPg=null;candies=[];pops=[];score=0;combo=0;comboT=0;candyCount=0;popped={};bestCombo=0;startT=S.t;endT=0;lastLeft=6;
+ ctrl=[0,1];players[0].target=null;players[1].target=null;winKey=-1;winPg=null;candies=[];pops=[];score=0;combo=0;comboT=0;candyCount=0;popped={};bestCombo=0;startT=S.t;endT=0;lastLeft=6;
  while(placed<70&&tries<3000){tries++;x=Math.floor(Math.random()*W);y=Math.floor(Math.random()*H);t=map[y][x];
   if(t===T.GRASS||t===T.PATH||t===T.MOON||t===T.GRAVE){if(dist(x+0.5,y+0.5,boss.x,boss.y)<3.4)continue;candies.push({x:x+0.5,y:y+0.5,z:0,sky:false,got:false,e:['🍬','🍭','🍫','🍪'][placed%4]});placed++;}}
  placed=0;tries=0;
@@ -494,8 +494,7 @@ function v2Init(){
 }
 function inputVec(pi){
  var ix,iy;
- if(pi===0){ix=(keys.d?1:0)-(keys.a?1:0);iy=(keys.s?1:0)-(keys.w?1:0);}
- else{ix=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);iy=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);}
+ var sv=schemeIn(pi,true);ix=sv.ix;iy=sv.iy;
  var gx=ix+iy,gy=iy-ix,l=Math.hypot(gx,gy);
  if(!l)return {gx:0,gy:0};
  return {gx:gx/l,gy:gy/l};
@@ -591,7 +590,7 @@ function drawV2Overlay(){
  txt('Score '+score,CW-30,32,20,'#ffd23f','right');
  if(combo>1){txt('Combo x'+combo+(combo>=5?'  BONUS x'+(1+Math.floor(combo/5)):''),CW-30,56,15,'#ff9ad5','right');rr(CW-250,64,Math.max(2,230*comboT/2.2),4,2);ctx.fillStyle='#ff9ad5';ctx.fill();}
 }
-function render(){render0();if(S.mode==='play')drawV2Overlay();if(S.mode!=='title')drawSpeaker();if(S.mode==='win'&&winPg&&winKey!==S.winPage){winKey=S.winPage;speak(winPg.t);}}
+function render(){render0();if(S.mode==='play'){drawV2Overlay();drawTarget();drawButtons();}if(S.mode!=='title')drawSpeaker();if(S.mode==='win'&&winPg&&winKey!==S.winPage){winKey=S.winPage;speak(winPg.t);}}
 function drawStats(){
  var secs=Math.max(0,Math.floor(endT-startT)),m=Math.floor(secs/60),s=secs%60,stars=score>=700?3:(score>=350?2:1);
  txt('🍬 '+candyCount+' candy   Best combo x'+bestCombo+'   Score '+score,CW/2,520,26,'#ffe9a0','center',true);
@@ -643,12 +642,73 @@ function drawSpeaker(){
 }
 function hitSpeaker(mx,my){return dist(mx,my,CW-50,112)<30;}
 
+/* ---------- v4: control swap + mouse/touch controls ---------- */
+var ctrl=[0,1];
+function schemeIn(pi,noTarget){
+ var s=(players[1].kid<0&&pi===0)?-1:ctrl[pi],ix=0,iy=0,p=players[pi];
+ if(s===0||s===-1){ix+=(keys.d?1:0)-(keys.a?1:0);iy+=(keys.s?1:0)-(keys.w?1:0);}
+ if(s===1||s===-1){ix+=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0);iy+=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);}
+ ix=Math.max(-1,Math.min(1,ix));iy=Math.max(-1,Math.min(1,iy));
+ if(ix||iy){p.target=null;return {ix:ix,iy:iy};}
+ if(noTarget||!p.target||p.kid<0)return {ix:0,iy:0};
+ var k=kids[p.kid],dx=p.target.x-k.x,dy=p.target.y-k.y,d=Math.hypot(dx,dy);
+ if(d<0.2){p.target=null;return {ix:0,iy:0};}
+ if(p.lastD!==undefined&&Math.abs(p.lastD-d)<0.002){p.target.stuck=(p.target.stuck||0)+1;if(p.target.stuck>20){p.target=null;p.lastD=undefined;return {ix:0,iy:0};}}else p.target.stuck=0;
+ p.lastD=d;p.fx=dx/d;p.fy=dy/d;
+ return {ix:(dx-dy)/2,iy:(dx+dy)/2};
+}
+function schemePlayer(s){return players[1].kid<0?0:ctrl.indexOf(s);}
+function swapCtrl(){
+ if(players[1].kid<0){say('With one player, both WASD and the arrow keys work!',3);return;}
+ ctrl=[ctrl[1],ctrl[0]];
+ say('Keys swapped! P1 now uses '+(ctrl[0]===0?'W A S D':'the arrow keys')+', P2 uses '+(ctrl[1]===0?'W A S D':'the arrow keys')+'.',4);sfx.sw();
+}
+function hudKeys(pi){
+ if(players[1].kid<0)return 'Move WASD or arrows · X or / power · E dash · Q switch · or click!';
+ return ctrl[pi]===0?'Move WASD · X power · E dash · Q switch':'Move arrows · / power · , dash · . switch';
+}
+function selectKid(pi,i){
+ var cur=kids[players[pi].kid];
+ if(cur.state==='rocket'&&tileAt(cur.x,cur.y)===T.VOID){say('Land the rocket first!',2);sfx.bad();return;}
+ if(cur.state!=='walk'&&canStand(cur,cur.x,cur.y,'walk')){cur.state='walk';cur.zt=0;}
+ players[pi].kid=i;players[pi].target=null;sfx.sw();v2Say(kids[i]);
+}
+function btnList(){
+ var k=kids[players[0].kid],pw,pe;
+ if(k.type==='ghost'){pe='👻';pw=k.state==='hover'?'Land':'Float';}
+ else if(k.type==='astro'){pe='🚀';pw=k.state==='rocket'?'Land':'Rocket';}
+ else{pe='🦖';pw='Roar';}
+ return [{id:'power',e:pe,l:pw},{id:'dash',e:'💨',l:'Dash'},{id:'switch',e:'🔄',l:'Switch'}];
+}
+function hitBtn(mx,my){var L=btnList();for(var i=0;i<L.length;i++)if(dist(mx,my,CW-50,215+i*74)<32)return L[i].id;return null;}
+function drawButtons(){
+ btnList().forEach(function(b,i){var x=CW-50,y=215+i*74;circ(x,y,30);ctx.fillStyle='rgba(20,16,30,.85)';ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=players[0].col;ctx.stroke();emoji(b.e,x,y-2,26);txt(b.l,x,y+42,13,'#ffffff','center',true);});
+}
+function drawTarget(){
+ var t=players[0].target;if(!t)return;
+ var p=proj(t.x,t.y,0),r=10+Math.sin(S.t*8)*3;ell(p[0],p[1],r*1.6,r*0.8);ctx.lineWidth=3;ctx.strokeStyle=players[0].col;ctx.stroke();
+}
+function worldClick(mx,my){
+ var b=hitBtn(mx,my);
+ if(b){if(b==='power')power(0);else if(b==='dash')dash(0);else switchKid(0);return true;}
+ var best=-1,bd=34;
+ kids.forEach(function(k){var p=proj(k.x,k.y,k.z),d=dist(mx,my,p[0],p[1]-22);if(d<bd){bd=d;best=k.i;}});
+ if(best>=0){
+  if(players[0].kid===best){power(0);return true;}
+  if(ownerOf(best)===-1){selectKid(0,best);return true;}
+  return true;
+ }
+ var sx=mx-CW/2+cam.x,sy=my-CH/2+cam.y,wx=(sx/32+sy/16)/2,wy=(sy/16-sx/32)/2;
+ players[0].target={x:wx,y:wy,stuck:0};players[0].lastD=undefined;
+ return true;
+}
+
 /* ---------- loop ---------- */
 var last=0;
 function frame(dt){update(dt);render();}
 function loop(ts){var dt=Math.min(0.05,(ts-last)/1000||0.016);last=ts;frame(dt);window.requestAnimationFrame(loop);}
 initGame();
-window.__hm={S:S,frame:frame,onPress:onPress,get kids(){return kids;},get clues(){return clues;},get boss(){return boss;},players:players,sceneClick:sceneClick,leaveScene:leaveScene,startGame:startGame,keys:keys,get gateOpen(){return gateOpen;},get bossDone(){return bossDone;},canStand:canStand,tileAt:tileAt,roar:roar,power:power,dash:dash,get candies(){return candies;},get score(){return score;},get combo(){return combo;}};
+window.__hm={S:S,frame:frame,onPress:onPress,get kids(){return kids;},get clues(){return clues;},get boss(){return boss;},players:players,sceneClick:sceneClick,leaveScene:leaveScene,startGame:startGame,keys:keys,get gateOpen(){return gateOpen;},get bossDone(){return bossDone;},canStand:canStand,tileAt:tileAt,roar:roar,power:power,dash:dash,worldClick:worldClick,get ctrl(){return ctrl;},get candies(){return candies;},get score(){return score;},get combo(){return combo;}};
 window.requestAnimationFrame(loop);
 })();
 </script></body></html>
